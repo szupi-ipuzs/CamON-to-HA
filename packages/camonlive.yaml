@@ -1,0 +1,82 @@
+rest_command:
+  camonlive_torch_on:
+    method: GET
+    content_type: "application/x-www-form-urlencoded"
+    url: http://192.168.2.235:8080/control?torch=on
+  camonlive_torch_off:
+    method: GET
+    content_type: "application/x-www-form-urlencoded"
+    url: http://192.168.2.235:8080/control?torch=off
+  camonlive_autofocus:
+    method: GET
+    url: http://192.168.2.235:8080/control?autofocus=start
+  camonlive_zoom_in:
+    method: GET
+    url: http://192.168.2.235:8080/control?zoom=+10
+  camonlive_zoom_out:
+    method: GET
+    url: http://192.168.2.235:8080/control?zoom=-10
+
+sensor:
+  - platform: rest
+    resource: http://192.168.2.235:8080/sensors
+    scan_interval: 60
+    name: 'camonlive_sensors'
+    value_template: 1
+    json_attributes:
+      - "battery"
+      - "torch"
+  - platform: rest
+    resource: http://192.168.2.235:8080/status
+    scan_interval: 60
+    name: 'camonlive_status'
+    value_template: 1
+    json_attributes:
+      - "model"
+      - "serial"
+      - "id"
+      - "version"
+  - platform: template
+    sensors:
+      camonlive_battery:
+        friendly_name: "CamONLive Battery"
+        device_class: battery
+        unit_of_measurement: "%"
+        value_template: "{{ state_attr('sensor.camonlive_sensors', 'battery')['level'] }}"
+      camonlive_model:
+        friendly_name: "CamONLive Model"
+        value_template: "{{ state_attr('sensor.camonlive_status', 'model') }}"
+      camonlive_serial:
+        friendly_name: "CamONLive Serial"
+        value_template: "{{ state_attr('sensor.camonlive_status', 'serial') }}"
+      camonlive_id:
+        friendly_name: "CamONLive ID"
+        value_template: "{{ state_attr('sensor.camonlive_status', 'id') }}"
+      camonlive_version:
+        friendly_name: "CamONLive Version"
+        value_template: "{{ state_attr('sensor.camonlive_status', 'version') }}"
+
+binary_sensor:
+  - platform: template
+    sensors:
+      camonlive_charging:
+        friendly_name: "CamONLive Charging"
+        device_class: battery_charging
+        value_template: >
+          {% if state_attr('sensor.camonlive_sensors', 'battery')['connection'] == 'AC' %}
+            On
+          {% elif state_attr('sensor.camonlive_sensors', 'battery')['connection'] == 'unplugged' %}
+            Off
+          {% endif %}
+
+switch:
+  - platform: template
+    switches:
+      camonlive_torch:
+        friendly_name: "CamONLive Torch"
+        value_template: "{{ state_attr('sensor.camonlive_sensors', 'torch') }}"
+        turn_on:
+          service: rest_command.camonlive_torch_on
+        turn_off:
+          service: rest_command.camonlive_torch_off
+
